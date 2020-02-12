@@ -15,14 +15,18 @@ logging:
 
 ethereum:
   nodes:
-  - name: default
-    url: ${ETHEREUM_NODE_URL:http://localhost:8545}
-    blockStrategy: POLL
-    syncingThreshold: 100
-    healthcheckInterval: 3000
+    - name: default
+      url: ${ETHEREUM_NODE_URL:http://localhost:8545}
+      blockStrategy: POLL
+      syncingThreshold: 100
+      healthcheckInterval: 3000
   healthcheck:
     pollInterval: 2000
   blockStrategy: POLL
+
+ether:
+  node:
+    url: http://localhost:8545
 
 #eventFilters:
 #  - id: CryptoKittiesTransfer
@@ -51,6 +55,16 @@ ethereum:
 #  transactionIdentifierValue: ${CONTRACT_ADDRESS_EM_TOKEN:0xfBAB8dE62002c86986C6e070BD3bB46BF983C74e}
 #  statuses: ['FAILED']
 
+contracts:
+  database:
+    wallet:
+      ID: "Wallets"
+    token:
+      ID: "Tokens"
+
+pusher:
+  url: ${ETHEREUM_NODE_URL:http://62.168.190.83:18081/connector-pusher-1.0/rest/pusher/api/v1}
+
 eventStore:
   type: DB
   url: http://localhost:8081/api/rest/v1
@@ -65,7 +79,7 @@ broadcaster:
     expirationMillis: 6000000
   event:
     confirmation:
-      numBlocksToWait: 12
+      numBlocksToWait: 1
       numBlocksToWaitForMissingTx: 100
       numBlocksToWaitBeforeInvalidating: 2
   multiInstance: false
@@ -86,13 +100,13 @@ kafka:
     partitions: 1
     replicationSets: 1
 
-spring:
-  rabbitmq:
-    host: ${RABBIT_ADDRESS:localhost}
-
-rabbitmq:
-  exchange: ${RABBIT_EXCHANGE:ThisIsAExchange}
-  routingKeyPrefix: ${RABBIT_ROUTING:thisIsRoutingKey}
+#spring:
+#  rabbitmq:
+#    host: ${RABBIT_ADDRESS:localhost}
+#
+#rabbitmq:
+#  exchange: ${RABBIT_EXCHANGE:ThisIsAExchange}
+#  routingKeyPrefix: ${RABBIT_ROUTING:thisIsRoutingKey}
 
 management:
   endpoints:

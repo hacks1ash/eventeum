@@ -45,6 +45,10 @@ public class TransactionMonitoringSpec {
 
     private String transactionIdentifierValue;
 
+    private String hostname;
+
+    private String coin;
+
     public TransactionMonitoringSpec(TransactionIdentifierType type,
                                      String transactionIdentifierValue,
                                      String nodeName,

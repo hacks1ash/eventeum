@@ -13,7 +13,7 @@
     </parent>
 
     <properties>
-        <java.version>1.8</java.version>
+        <java.version>10</java.version>
         <skipIntegrationTests>true</skipIntegrationTests>
         <micrometer.version>1.1.0</micrometer.version>
     </properties>
@@ -84,6 +84,7 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>2.2.4.RELEASE</version>
                 <configuration>
                     <addResources>true</addResources>
                     <jvmArguments>
@@ -143,9 +144,26 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.0</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <annotationProcessorPaths>
+<!--                        <path>-->
+<!--                            <groupId>com.google.dagger</groupId>-->
+<!--                            <artifactId>dagger-compiler</artifactId>-->
+<!--                            <version>2.15</version>-->
+<!--                        </path>-->
+
+                        <!-- SOLUTION -->
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>1.18.12</version>
+                        </path>
+
+
+                    </annotationProcessorPaths>
+                    <source>10</source>
+                    <target>10</target>
                 </configuration>
             </plugin>
         </plugins>

@@ -33,6 +33,10 @@ public class ContractEventFilter {
 
     private String node = Constants.DEFAULT_NODE_NAME;
 
+    private String coin;
+
+    private String hostname;
+
     @Embedded
     private ContractEventSpecification eventSpecification;
     

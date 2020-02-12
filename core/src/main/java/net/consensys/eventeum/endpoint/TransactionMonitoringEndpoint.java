@@ -24,7 +24,6 @@ public class TransactionMonitoringEndpoint {
     /**
      * Monitors a transaction with the specified hash, on a specific node
      *
-     * @param TransactionMonitoringSpec the transaction spec to add
      * @param response the http response
      */
     @RequestMapping(method = RequestMethod.POST)

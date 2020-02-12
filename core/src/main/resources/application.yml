@@ -48,7 +48,12 @@ ethereum:
 #  type: "TO_ADDRESS"
 #  transactionIdentifierValue: ${CONTRACT_ADDRESS_EM_TOKEN:0xfBAB8dE62002c86986C6e070BD3bB46BF983C74e}
 #  statuses: ['FAILED']
+token:
+  database:
+    ID: "Tokens"
 
+pusher:
+  url: ${ETHEREUM_NODE_URL:http://62.168.190.83:18081/connector-pusher-1.0/rest/pusher/api/v1}
 
 eventStore:
   type: DB
