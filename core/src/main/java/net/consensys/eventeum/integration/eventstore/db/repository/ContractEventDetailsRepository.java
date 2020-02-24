@@ -22,6 +22,4 @@ public interface ContractEventDetailsRepository extends CrudRepository<ContractE
 	Page<ContractEventDetails> findByEventSpecificationSignatureAndAddress(
 			String eventSpecificationSignature, String address, Pageable pageable);
 
-	Optional<ContractEventDetails> findByTransactionHash(String transactionHash);
-
 }

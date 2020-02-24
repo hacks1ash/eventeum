@@ -20,7 +20,7 @@ public class TransactionEndpoint {
     private TransactionRepository transactionRepository;
 
     @RequestMapping(value = "/{contractAddress}")
-    public List<Transaction> getTransactions(@PathVariable(value = "contractAddress") String contracAddress,
+    public List<Transaction> getTransactions(@PathVariable(value = "contractAddress") String contractAddress,
                                              @RequestParam(value = "transactionType", required = false) TransactionType transactionType,
                                              @RequestParam(value = "fromTime", required = false) Long fromTime,
                                              @RequestParam(value = "toTime", required = false) Long toTime,
@@ -37,7 +37,28 @@ public class TransactionEndpoint {
             pagination = PageRequest.of(0, Integer.MAX_VALUE, Sort.by("createdTime").descending());
         }
 
-        return transactionRepository.findAllByContractAddressAndCoinAndTransactionTypeAndCreatedTimeBetween(contracAddress, coin, transactionType.toString(), fromTime, toTime, pagination);
+        String transactionTypeString = null;
+
+        if (transactionType != null) {
+            transactionTypeString = transactionType.toString();
+        }
+
+        if (fromTime != null && toTime != null) {
+            fromTime -= 1;
+            toTime += 1;
+        }
+
+        if (fromTime != null && toTime == null) {
+            fromTime -= 1;
+            toTime = Long.MAX_VALUE;
+        }
+
+        if (toTime != null && fromTime == null) {
+            toTime += 1;
+            fromTime = 0l;
+        }
+
+        return transactionRepository.findAllByContractAddressAndCoinAndTransactionTypeAndCreatedTimeBetween(contractAddress, coin, transactionTypeString, fromTime, toTime, pagination);
 
     }
 

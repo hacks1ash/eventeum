@@ -18,7 +18,7 @@ public interface TransactionRepository extends MongoRepository<Transaction, Stri
             + "?#{ [0] == null ? { $where : 'true'} : { 'contractAddress' : [0] } },"
             + "?#{ [1] == null ? { $where : 'true'} : { 'coin' : [1] } },"
             + "?#{ [2] == null ? { $where : 'true'} : { 'transactionType' : [2] } },"
-            + "?#{ [3] == null ? { $where : 'true'} : { 'createdTime' : [3] } }"
+            + "?#{ [3] == null ? { $where : 'true'} : { 'createdTime' : { $gt : [3], $lt: [4]} } }"
             + "]}")
     List<Transaction> findAllByContractAddressAndCoinAndTransactionTypeAndCreatedTimeBetween(String contractAddress, String coin, String transactionType, Long createdTime, Long createdTime2, Pageable pageable);
 
