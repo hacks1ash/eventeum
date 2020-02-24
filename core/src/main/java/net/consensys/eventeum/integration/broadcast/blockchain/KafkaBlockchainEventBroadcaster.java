@@ -9,6 +9,7 @@ import net.consensys.eventeum.dto.message.EventeumMessage;
 import net.consensys.eventeum.dto.message.TransactionEvent;
 import net.consensys.eventeum.dto.transaction.TransactionDetails;
 import net.consensys.eventeum.integration.KafkaSettings;
+import net.consensys.eventeum.integration.consumer.SaveConsumer;
 import net.consensys.eventeum.utils.JSON;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,10 +20,10 @@ import java.util.Optional;
 
 /**
  * A BlockchainEventBroadcaster that broadcasts the events to a Kafka queue.
- *
+ * <p>
  * The key for each message will defined by the correlationIdStrategy if configured,
  * or a combination of the transactionHash, blockHash and logIndex otherwise.
- *
+ * <p>
  * The topic names for block and contract events can be configured via the
  * kafka.topic.contractEvents and kafka.topic.blockEvents properties.
  *
@@ -38,12 +39,16 @@ public class KafkaBlockchainEventBroadcaster implements BlockchainEventBroadcast
 
     private CrudRepository<ContractEventFilter, String> filterRespository;
 
+    private SaveConsumer saveConsumer;
+
     public KafkaBlockchainEventBroadcaster(KafkaTemplate<String, EventeumMessage> kafkaTemplate,
-                                    KafkaSettings kafkaSettings,
-                                    CrudRepository<ContractEventFilter, String> filterRepository) {
+                                           KafkaSettings kafkaSettings,
+                                           CrudRepository<ContractEventFilter, String> filterRepository,
+                                           SaveConsumer saveConsumer) {
         this.kafkaTemplate = kafkaTemplate;
         this.kafkaSettings = kafkaSettings;
         this.filterRespository = filterRepository;
+        this.saveConsumer = saveConsumer;
     }
 
     @Override
@@ -58,15 +63,16 @@ public class KafkaBlockchainEventBroadcaster implements BlockchainEventBroadcast
     public void broadcastContractEvent(ContractEventDetails eventDetails) {
         final EventeumMessage<ContractEventDetails> message = createContractEventMessage(eventDetails);
         LOG.info("Sending contract event message: " + JSON.stringify(message));
-
-        kafkaTemplate.send(kafkaSettings.getContractEventsTopic(), getContractEventCorrelationId(message), message);
+        if (saveConsumer.saveContractTransfer(eventDetails)) {
+            kafkaTemplate.send(kafkaSettings.getContractEventsTopic(), getContractEventCorrelationId(message), message);
+        }
     }
 
     @Override
     public void broadcastTransaction(TransactionDetails transactionDetails) {
         final EventeumMessage<TransactionDetails> message = createTransactionEventMessage(transactionDetails);
         LOG.info("Sending transaction event message: " + JSON.stringify(message));
-
+        saveConsumer.saveTransaction(transactionDetails);
         kafkaTemplate.send(kafkaSettings.getTransactionEventsTopic(), transactionDetails.getBlockHash(), message);
     }
 

@@ -13,7 +13,7 @@ public class PusherMiddleware {
     private String url;
 
     PusherMiddleware() {
-        api = RestProxyFactory.createProxy(PusherAPI.class, "http://62.168.190.83:18081/connector-pusher/rest/pusher/api/v1");
+        api = RestProxyFactory.createProxy(PusherAPI.class, "http://127.0.0.1:8080/connector-pusher-1.0/rest/pusher/api/v1");
     }
 
     public static PusherAPI getPusherApi() {

@@ -33,4 +33,6 @@ public interface EventeumMessage<T> extends RetryableMessage {
     String getType();
 
     T getDetails();
+
+    void setDetails(T details);
 }

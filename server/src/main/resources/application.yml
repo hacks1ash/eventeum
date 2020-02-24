@@ -16,7 +16,7 @@ logging:
 ethereum:
   nodes:
     - name: default
-      url: ${ETHEREUM_NODE_URL:http://localhost:8545}
+      url: ${ETHEREUM_NODE_URL:http://34.197.91.149:8545}
       blockStrategy: POLL
       syncingThreshold: 100
       healthcheckInterval: 3000
@@ -26,34 +26,7 @@ ethereum:
 
 ether:
   node:
-    url: http://localhost:8545
-
-#eventFilters:
-#  - id: CryptoKittiesTransfer
-#    contractAddress: "0x06012c8cf97bead5deae237070f9587f8e7a266d"
-#    eventSpecification:
-#      eventName: Transfer
-#      nonIndexedParameterDefinitions:
-#        - position: 0
-#          type: ADDRESS
-#        - position: 1
-#          type: ADDRESS
-#        - position: 2
-#          type: UINT256
-#
-#    correlationId:
-#      type: NON_INDEXED_PARAMETER
-#      index: 2
-
-#transactionFilters:
-#- nodeName: ${ETHEREUM_NETWORK:DefaultNetwork}
-#  type: "FROM_ADDRESS"
-#  transactionIdentifierValue: ${CONTRACT_ADDRESS_EM_TOKEN:0x0f8E7A681019Ec13EfE853a6Eca666E05b214Fd5}
-#  statuses: ['CONFIRMED']
-#- nodeName: ${ETHEREUM_NETWORK:DefaultNetwork}
-#  type: "TO_ADDRESS"
-#  transactionIdentifierValue: ${CONTRACT_ADDRESS_EM_TOKEN:0xfBAB8dE62002c86986C6e070BD3bB46BF983C74e}
-#  statuses: ['FAILED']
+    url: http://34.197.91.149:8545
 
 contracts:
   database:
@@ -61,9 +34,11 @@ contracts:
       ID: "Wallets"
     token:
       ID: "Tokens"
+    account:
+      ID: "Accounts"
 
 pusher:
-  url: ${ETHEREUM_NODE_URL:http://62.168.190.83:18081/connector-pusher-1.0/rest/pusher/api/v1}
+  url: http://127.0.0.1:8080/connector-pusher-1.0/rest/pusher/api/v1
 
 eventStore:
   type: DB

@@ -18,6 +18,9 @@ import javax.persistence.Id;
 public class TransactionDetails {
 
     @Id
+    @org.springframework.data.annotation.Id
+    private String id;
+
     private String hash;
 
     private String nonce;
@@ -45,6 +48,10 @@ public class TransactionDetails {
     private String coin;
 
     private String hostname;
+
+    private String gasPrice;
+
+    private String gas;
 
     private TransactionStatus status;
 

@@ -29,6 +29,10 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ContractEventDetails {
 
+    @Id
+    @org.springframework.data.annotation.Id
+    private String id;
+
     private String name;
 
     private String filterId;
@@ -46,7 +50,6 @@ public class ContractEventDetails {
     @ElementCollection
     private List<EventParameter> nonIndexedParameters;
 
-    @Id
     private String transactionHash;
 
     private BigInteger logIndex;

@@ -1,6 +1,8 @@
 package net.consensys.eventeum;
 
 import org.web3j.abi.TypeReference;
+import org.web3j.abi.datatypes.Address;
+import org.web3j.abi.datatypes.DynamicArray;
 import org.web3j.abi.datatypes.Type;
 import org.web3j.crypto.Credentials;
 import org.web3j.protocol.Web3j;
@@ -33,7 +35,7 @@ public class WalletContract extends Contract {
         final org.web3j.abi.datatypes.Function function = new org.web3j.abi.datatypes.Function(
                 FUNC_GETFORWARDERS,
                 Arrays.<Type>asList(),
-                Collections.<TypeReference<?>>emptyList());
+                Arrays.<TypeReference<?>>asList(new TypeReference<DynamicArray<Address>>() {}));
         return new RemoteFunctionCall<List>(function,
                 new Callable<List>() {
                     @Override

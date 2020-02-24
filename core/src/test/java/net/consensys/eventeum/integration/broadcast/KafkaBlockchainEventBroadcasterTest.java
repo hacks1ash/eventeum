@@ -9,6 +9,7 @@ import net.consensys.eventeum.dto.message.ContractEvent;
 import net.consensys.eventeum.dto.message.EventeumMessage;
 import net.consensys.eventeum.integration.KafkaSettings;
 import net.consensys.eventeum.integration.broadcast.blockchain.KafkaBlockchainEventBroadcaster;
+import net.consensys.eventeum.integration.consumer.SaveConsumer;
 import net.consensys.eventeum.repository.ContractEventFilterRepository;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,16 +39,19 @@ public class KafkaBlockchainEventBroadcasterTest {
 
     private ContractEventFilterRepository mockFilterRepository;
 
+    private SaveConsumer mockSaveRepository;
+
     @Before
     public void init() {
         mockKafkaTemplate = mock(KafkaTemplate.class);
         mockKafkaSettings = mock(KafkaSettings.class);
         mockFilterRepository = mock(ContractEventFilterRepository.class);
+        mockSaveRepository = mock(SaveConsumer.class);
 
         when(mockKafkaSettings.getBlockEventsTopic()).thenReturn(BLOCK_EVENTS_TOPIC);
         when(mockKafkaSettings.getContractEventsTopic()).thenReturn(CONTRACT_EVENTS_TOPIC);
 
-        underTest = new KafkaBlockchainEventBroadcaster(mockKafkaTemplate, mockKafkaSettings, mockFilterRepository);
+        underTest = new KafkaBlockchainEventBroadcaster(mockKafkaTemplate, mockKafkaSettings, mockFilterRepository, mockSaveRepository);
     }
 
     @Test

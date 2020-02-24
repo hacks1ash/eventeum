@@ -3,6 +3,7 @@ package net.consensys.eventeum.config;
 import net.consensys.eventeum.annotation.ConditionalOnKafkaRequired;
 import net.consensys.eventeum.dto.message.EventeumMessage;
 import net.consensys.eventeum.integration.KafkaSettings;
+import net.consensys.eventeum.integration.consumer.model.WalletNotifyBody;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -12,6 +13,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
@@ -41,8 +43,12 @@ public class KafkaConfiguration {
         return new KafkaAdmin(configs);
     }
 
+    //////////////////
+    //// Producers
+    //////////////////
+
     @Bean
-    public ProducerFactory<String, EventeumMessage> eventeumProducerFactory() {
+    public Map<String, Object> producerConfigs() {
         Map<String, Object> configProps = new HashMap<>();
         configProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, settings.getBootstrapAddresses());
         configProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -54,8 +60,23 @@ public class KafkaConfiguration {
         if ("PLAINTEXT".equals(settings.getSecurityProtocol())) {
             configurePlaintextSecurityProtocol(configProps);
         }
-        return new DefaultKafkaProducerFactory<>(configProps);
+        return configProps;
     }
+
+    @Bean
+    public ProducerFactory<String, EventeumMessage> eventeumProducerFactory() {
+        return new DefaultKafkaProducerFactory<>(producerConfigs());
+    }
+
+    @Bean
+    @Primary
+    public KafkaTemplate<String, EventeumMessage> eventeumKafkaTemplate() {
+        return new KafkaTemplate<>(eventeumProducerFactory());
+    }
+
+    //////////////////
+    //// Consumers
+    //////////////////
 
     @Bean
     public ConsumerFactory<String, EventeumMessage> eventeumConsumerFactory() {
@@ -82,11 +103,6 @@ public class KafkaConfiguration {
     }
 
     @Bean
-    public KafkaTemplate<String, EventeumMessage> eventeumKafkaTemplate() {
-        return new KafkaTemplate<>(eventeumProducerFactory());
-    }
-
-    @Bean
     public ConcurrentKafkaListenerContainerFactory<String, EventeumMessage> eventeumKafkaListenerContainerFactory() {
 
         ConcurrentKafkaListenerContainerFactory<String, EventeumMessage> factory
@@ -95,6 +111,10 @@ public class KafkaConfiguration {
         factory.setConcurrency(1);
         return factory;
     }
+
+    //////////////////
+    //// Topics
+    //////////////////
 
     @Bean
     public NewTopic blockEventsTopic(KafkaSettings kafkaSettings) {

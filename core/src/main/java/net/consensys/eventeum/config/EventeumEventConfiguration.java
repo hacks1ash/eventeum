@@ -13,10 +13,12 @@ import net.consensys.eventeum.integration.eventstore.db.repository.ContractEvent
 import net.consensys.eventeum.repository.TransactionMonitoringSpecRepository;
 import net.consensys.eventeum.service.SubscriptionService;
 import net.consensys.eventeum.service.TransactionMonitoringService;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.retry.support.RetryTemplate;
 
 /**
  * Spring bean configuration for the FilterEvent broadcaster and consumer.
@@ -44,8 +46,9 @@ public class EventeumEventConfiguration {
                                                                   ContractEventDetailsRepository contractEventDetailsRepository,
                                                                   ContractsRepository contractsRepository,
                                                                   TransactionDetailsRepository transactionDetailsRepository,
-                                                                  TransactionMonitoringSpecRepository transactionMonitoringSpecRepository) {
-        return new KafkaFilterEventConsumer(subscriptionService, transactionMonitoringService, kafkaSettings, contractEventDetailsRepository, contractsRepository, transactionDetailsRepository, transactionMonitoringSpecRepository);
+                                                                  TransactionMonitoringSpecRepository transactionMonitoringSpecRepository,
+                                                                  @Qualifier("cwsRetryTemplate") RetryTemplate retryTemplate) {
+        return new KafkaFilterEventConsumer(subscriptionService, transactionMonitoringService, kafkaSettings, contractEventDetailsRepository, contractsRepository, transactionDetailsRepository, transactionMonitoringSpecRepository, retryTemplate);
     }
 
     @Bean

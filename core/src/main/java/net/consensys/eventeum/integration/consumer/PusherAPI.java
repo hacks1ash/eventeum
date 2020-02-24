@@ -2,10 +2,7 @@ package net.consensys.eventeum.integration.consumer;
 
 import net.consensys.eventeum.integration.consumer.model.WalletNotifyBody;
 
-import javax.ws.rs.POST;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
+import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.math.BigInteger;
@@ -16,6 +13,7 @@ public interface PusherAPI {
 
     @POST
     @Path(value = "{hostname}/node/wallet-notify/{coin}")
+    @Consumes(value = {"application/json"})
     Response sendWalletNotify(@PathParam("hostname") String hostname,
                               @PathParam("coin") String coin,
                               WalletNotifyBody walletNotifyBody);

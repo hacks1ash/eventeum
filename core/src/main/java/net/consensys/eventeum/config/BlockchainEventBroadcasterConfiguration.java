@@ -7,6 +7,7 @@ import net.consensys.eventeum.integration.KafkaSettings;
 import net.consensys.eventeum.integration.PulsarSettings;
 import net.consensys.eventeum.integration.RabbitSettings;
 import net.consensys.eventeum.integration.broadcast.blockchain.*;
+import net.consensys.eventeum.integration.consumer.SaveConsumer;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,9 +48,10 @@ public class BlockchainEventBroadcasterConfiguration {
     @ConditionalOnProperty(name= BROADCASTER_PROPERTY, havingValue="KAFKA")
     public BlockchainEventBroadcaster kafkaBlockchainEventBroadcaster(KafkaTemplate<String, EventeumMessage> kafkaTemplate,
                                                                       KafkaSettings kafkaSettings,
-                                                                      CrudRepository<ContractEventFilter, String> filterRepository) {
+                                                                      CrudRepository<ContractEventFilter, String> filterRepository,
+                                                                      SaveConsumer saveConsumer) {
         final BlockchainEventBroadcaster broadcaster =
-                new KafkaBlockchainEventBroadcaster(kafkaTemplate, kafkaSettings, filterRepository);
+                new KafkaBlockchainEventBroadcaster(kafkaTemplate, kafkaSettings, filterRepository, saveConsumer);
 
         return onlyOnceWrap(broadcaster);
     }

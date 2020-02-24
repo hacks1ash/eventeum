@@ -7,7 +7,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
-import java.util.List;
+import javax.persistence.Lob;
+import java.util.Set;
 
 @Document
 @Entity
@@ -24,7 +25,19 @@ public class Contracts {
     @org.springframework.data.annotation.Id
     private String id;
 
+    @Lob
     @ElementCollection
-    private List<String> contractAddresses;
+    private Set<NameContracts> contractAddresses;
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class NameContracts {
+
+        private String coin;
+
+        private String contractAddress;
+
+    }
 
 }

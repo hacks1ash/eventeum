@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletResponse;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 /**
  * A REST endpoint for adding a removing event filters.
@@ -46,10 +47,7 @@ public class ContractEventFilterEndpoint {
         final ContractEventFilter registeredFilter = filterService.registerContractEventFilter(eventFilter, true);
         response.setStatus(HttpServletResponse.SC_ACCEPTED);
 
-        this.contractsRepository.findById(walletID).ifPresentOrElse(contracts -> {
-            contracts.getContractAddresses().add(eventFilter.getContractAddress());
-            this.contractsRepository.save(contracts);
-        }, () -> this.contractsRepository.save(new Contracts(walletID, Collections.singletonList(eventFilter.getContractAddress()))));
+        saveContract(eventFilter, walletID);
 
         return new AddEventFilterResponse(registeredFilter.getId());
     }
@@ -90,16 +88,20 @@ public class ContractEventFilterEndpoint {
     public AddEventFilterResponse addERC20Filter(@RequestBody ContractEventFilter eventFilter,
                                                  HttpServletResponse response) {
 
-        this.contractsRepository.findById(tokenID).ifPresentOrElse(contracts -> {
-            contracts.getContractAddresses().add(eventFilter.getContractAddress());
-            this.contractsRepository.save(contracts);
-        }, () -> this.contractsRepository.save(new Contracts(tokenID, Collections.singletonList(eventFilter.getContractAddress()))));
+        saveContract(eventFilter, tokenID);
 
         final ContractEventFilter registeredFilter = filterService.registerContractEventFilter(eventFilter, true);
         response.setStatus(HttpServletResponse.SC_ACCEPTED);
 
         return new AddEventFilterResponse(registeredFilter.getId());
 
+    }
+
+    private void saveContract(@RequestBody ContractEventFilter eventFilter, String walletID) {
+        this.contractsRepository.findById(walletID).ifPresentOrElse(contracts -> {
+            contracts.getContractAddresses().add(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getContractAddress()));
+            this.contractsRepository.save(contracts);
+        }, () -> this.contractsRepository.save(new Contracts(walletID, Set.copyOf(Collections.singletonList(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getContractAddress()))))));
     }
 
     @Autowired
