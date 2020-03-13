@@ -72,7 +72,7 @@ public class TransactionMonitoringEndpoint {
         this.contractsRepository.findById(walletID).ifPresentOrElse(contracts -> {
             contracts.getContractAddresses().add(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getTransactionIdentifierValue()));
             this.contractsRepository.save(contracts);
-        }, () -> this.contractsRepository.save(new Contracts(walletID, Set.copyOf(Collections.singletonList(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getTransactionIdentifierValue()))))));
+        }, () -> this.contractsRepository.save(new Contracts(walletID, Set.copyOf(Collections.singletonList(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getTransactionIdentifierValue().toLowerCase()))))));
     }
 
     @Autowired

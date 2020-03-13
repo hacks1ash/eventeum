@@ -41,7 +41,6 @@ import java.util.function.Consumer;
  *
  * @author Craig Williams <craig.williams@consensys.net>
  */
-// TODO add connector-pusher url in application.properties
 @Component
 public class KafkaFilterEventConsumer implements EventeumInternalEventConsumer {
 

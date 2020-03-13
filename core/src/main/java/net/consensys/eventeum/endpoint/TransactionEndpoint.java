@@ -24,18 +24,7 @@ public class TransactionEndpoint {
                                              @RequestParam(value = "transactionType", required = false) TransactionType transactionType,
                                              @RequestParam(value = "fromTime", required = false) Long fromTime,
                                              @RequestParam(value = "toTime", required = false) Long toTime,
-                                             @RequestParam(value = "coin", required = false) String coin,
-                                             @RequestParam(value = "limit", required = false) Integer limit,
-                                             @RequestParam(value = "offset", required = false) Integer offset) {
-        PageRequest pagination = null;
-
-        if (limit != null && offset != null) {
-            pagination = PageRequest.of(((limit * (offset - 1)) / 10) - 1, limit, Sort.by("createdTime").descending());
-        } else if (limit != null) {
-            pagination = PageRequest.of(0, limit, Sort.by("createdTime").descending());
-        } else {
-            pagination = PageRequest.of(0, Integer.MAX_VALUE, Sort.by("createdTime").descending());
-        }
+                                             @RequestParam(value = "coin", required = false) String coin) {
 
         String transactionTypeString = null;
 
@@ -58,7 +47,7 @@ public class TransactionEndpoint {
             fromTime = 0l;
         }
 
-        return transactionRepository.findAllByContractAddressAndCoinAndTransactionTypeAndCreatedTimeBetween(contractAddress, coin, transactionTypeString, fromTime, toTime, pagination);
+        return transactionRepository.findAllByContractAddressAndCoinAndTransactionTypeAndCreatedTimeBetween(contractAddress, coin, transactionTypeString, fromTime, toTime, Sort.by("createdTime").descending());
 
     }
 
