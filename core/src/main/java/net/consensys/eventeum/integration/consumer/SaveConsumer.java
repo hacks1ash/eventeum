@@ -9,8 +9,10 @@ import net.consensys.eventeum.cws.response.TransactionAddress;
 import net.consensys.eventeum.cws.response.TransactionType;
 import net.consensys.eventeum.cws.response.storage.TransactionRepository;
 import net.consensys.eventeum.dto.event.ContractEventDetails;
+import net.consensys.eventeum.dto.event.filter.ContractEventFilter;
 import net.consensys.eventeum.dto.event.parameter.EventParameter;
 import net.consensys.eventeum.dto.transaction.TransactionDetails;
+import net.consensys.eventeum.repository.ContractEventFilterRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -42,6 +44,8 @@ public class SaveConsumer {
     private String web3URL;
 
     private ContractsRepository contractsRepository;
+
+    private ContractEventFilterRepository contractEventFilterRepository;
 
     private TransactionRepository transactionRepository;
 
@@ -270,8 +274,10 @@ public class SaveConsumer {
                 break;
             }
         }
-
-        return saveToDB(transaction);
+        if (saveToDB(transaction)) {
+            return updateBlockForContracts(details.getAddress(), details.getName(), details.getCoin(), details.getBlockNumber());
+        }
+        return false;
     }
 
     @SneakyThrows
@@ -325,9 +331,10 @@ public class SaveConsumer {
                         transactionType = TransactionType.WALLET_CREATION;
                         String contractAddress = web3j.ethGetTransactionReceipt(details.getHash()).send().getTransactionReceipt().get().getContractAddress();
                         transactionAddresses.add(new TransactionAddress(contractAddress, baseValue));
+                    } else {
+                        transactionAddresses.add(new TransactionAddress(to, baseValue));
                     }
                 }
-                transactionAddresses.add(new TransactionAddress(to, baseValue));
             }
 
             transaction = Transaction.builder()
@@ -347,14 +354,31 @@ public class SaveConsumer {
         return saveToDB(transaction);
     }
 
+
+    private boolean updateBlockForContracts(String contractAddress, String eventName, String coin, BigInteger blockNumber) {
+        Optional<ContractEventFilter> eventFilter = contractEventFilterRepository.findByContractAddressAndCoinAndEventSpecification_EventName(contractAddress, coin, eventName);
+        if (eventFilter.isPresent()) {
+            ContractEventFilter contractEventFilter = eventFilter.get();
+            contractEventFilter.setStartBlock(blockNumber);
+            contractEventFilterRepository.save(contractEventFilter);
+            return true;
+        }
+        return false;
+    }
+
     private boolean saveToDB(Transaction transaction) {
         if (transaction != null) {
             transactionRepository.findByTxidAndContractAddress(transaction.getTxid(), transaction.getContractAddress()).ifPresentOrElse(
                     transactionDetails -> {
                         transactionRepository.delete(transactionDetails);
+                        if (String.valueOf(transaction.getCreatedTime()).length() == 10) {
+                            transaction.setCreatedTime(transaction.getCreatedTime() * 1000);
+                        }
                         transactionRepository.save(transaction);
                     }, () -> {
-                        transaction.setCreatedTime(transaction.getCreatedTime() * 1000);
+                        if (String.valueOf(transaction.getCreatedTime()).length() == 10) {
+                            transaction.setCreatedTime(transaction.getCreatedTime() * 1000);
+                        }
                         transactionRepository.save(transaction);
                     }
             );
@@ -366,6 +390,11 @@ public class SaveConsumer {
     @Autowired
     public void setContractsRepository(ContractsRepository contractsRepository) {
         this.contractsRepository = contractsRepository;
+    }
+
+    @Autowired
+    public void setContractEventFilterRepository(ContractEventFilterRepository contractEventFilterRepository) {
+        this.contractEventFilterRepository = contractEventFilterRepository;
     }
 
     @Autowired

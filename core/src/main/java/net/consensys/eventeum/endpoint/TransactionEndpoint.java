@@ -4,7 +4,6 @@ import net.consensys.eventeum.cws.response.Transaction;
 import net.consensys.eventeum.cws.response.TransactionType;
 import net.consensys.eventeum.cws.response.storage.TransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;

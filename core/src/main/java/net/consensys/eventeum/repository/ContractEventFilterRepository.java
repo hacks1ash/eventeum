@@ -6,6 +6,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 /**
  * Spring repository for storing active ContractEventFilters in DB.
  *
@@ -14,4 +16,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 @ConditionalOnMissingBean(ContractEventFilterRepositoryFactory.class)
 public interface ContractEventFilterRepository extends CrudRepository<ContractEventFilter, String> {
+
+    Optional<ContractEventFilter> findByContractAddressAndCoinAndEventSpecification_EventName(String contractAddress, String coin, String eventSpecification_eventName);
+
 }
