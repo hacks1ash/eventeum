@@ -17,6 +17,8 @@ import java.util.Optional;
 @ConditionalOnMissingBean(ContractEventFilterRepositoryFactory.class)
 public interface ContractEventFilterRepository extends CrudRepository<ContractEventFilter, String> {
 
-    Optional<ContractEventFilter> findByContractAddressAndCoinAndEventSpecification_EventName(String contractAddress, String coin, String eventSpecification_eventName);
+    Optional<ContractEventFilter> findByContractAddressAndEventSpecification_EventName(String contractAddress, String eventSpecification_eventName);
+
+    Optional<ContractEventFilter> findByCoin(String coin);
 
 }

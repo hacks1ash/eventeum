@@ -1,6 +1,7 @@
 package net.consensys.eventeum.integration.consumer;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.eventeum.Contracts;
 import net.consensys.eventeum.ContractsRepository;
 import net.consensys.eventeum.WalletContract;
@@ -28,6 +29,7 @@ import java.math.BigInteger;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Component
 public class SaveConsumer {
 
@@ -356,10 +358,23 @@ public class SaveConsumer {
 
 
     private boolean updateBlockForContracts(String contractAddress, String eventName, String coin, BigInteger blockNumber) {
-        Optional<ContractEventFilter> eventFilter = contractEventFilterRepository.findByContractAddressAndCoinAndEventSpecification_EventName(contractAddress, coin, eventName);
+        log.warn(coin);
+        if (!coin.contains("eth")) {
+            Optional<ContractEventFilter> byCoin = contractEventFilterRepository.findByCoin(coin);
+            if (byCoin.isPresent()) {
+                ContractEventFilter contractEventFilter = byCoin.get();
+                contractEventFilter.setStartBlock(blockNumber.add(BigInteger.ONE));
+                contractEventFilterRepository.save(contractEventFilter);
+                if (eventName.equals("Transfer")) {
+                    return true;
+                }
+            }
+        }
+
+        Optional<ContractEventFilter> eventFilter = contractEventFilterRepository.findByContractAddressAndEventSpecification_EventName(contractAddress.toLowerCase(), eventName);
         if (eventFilter.isPresent()) {
             ContractEventFilter contractEventFilter = eventFilter.get();
-            contractEventFilter.setStartBlock(blockNumber);
+            contractEventFilter.setStartBlock(blockNumber.add(BigInteger.ONE));
             contractEventFilterRepository.save(contractEventFilter);
             return true;
         }
