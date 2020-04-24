@@ -4,10 +4,7 @@ import net.consensys.eventeum.ContractsRepository;
 import net.consensys.eventeum.TransactionDetailsRepository;
 import net.consensys.eventeum.dto.block.BlockDetails;
 import net.consensys.eventeum.dto.event.ContractEventDetails;
-import net.consensys.eventeum.dto.message.BlockEvent;
-import net.consensys.eventeum.dto.message.ContractEvent;
-import net.consensys.eventeum.dto.message.EventeumMessage;
-import net.consensys.eventeum.dto.message.TransactionEvent;
+import net.consensys.eventeum.dto.message.*;
 import net.consensys.eventeum.dto.transaction.TransactionDetails;
 import net.consensys.eventeum.integration.KafkaSettings;
 import net.consensys.eventeum.integration.broadcast.BroadcastException;
@@ -78,13 +75,19 @@ public class KafkaFilterEventConsumer implements EventeumInternalEventConsumer {
         messageConsumers.put(TransactionEvent.TYPE, (message) -> {
             TransactionDetails details = (TransactionDetails) message.getDetails();
             sendTxToEndpoint(details.getHash(), details.getContractAddress(),
-                    new BigInteger(details.getBlockNumber().substring(2), 16), "test", "teth");
+                    new BigInteger(details.getBlockNumber().substring(2), 16), "cwsprod", "eth");
 
         });
 
         messageConsumers.put(ContractEvent.TYPE, (message) -> {
             ContractEventDetails details = (ContractEventDetails) message.getDetails();
             sendContractEventToEndpoint(details);
+        });
+
+        messageConsumers.put(WebhookMessage.TYPE, (message) -> {
+            System.out.println(message);
+//            ContractEventDetails details = (ContractEventDetails) message.getDetails();
+//            sendContractEventToEndpoint(details);
         });
     }
 
@@ -104,7 +107,7 @@ public class KafkaFilterEventConsumer implements EventeumInternalEventConsumer {
     public void sendBlockToEndpoint(String blockNumber) {
         try {
             retryTemplate.execute(retryContext -> {
-                final String blockEndpoint = pusherBaseUrl + "/test/node/block-notify/teth/" + blockNumber;
+                final String blockEndpoint = pusherBaseUrl + "/cwsprod/node/block-notify/eth/" + blockNumber;
                 ResponseEntity<Void> response = restTemplate.postForEntity(blockEndpoint, null, Void.class);
                 checkForSuccessResponse(response);
                 return null;

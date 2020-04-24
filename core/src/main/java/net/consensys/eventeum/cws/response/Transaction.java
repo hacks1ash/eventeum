@@ -44,6 +44,8 @@ public class Transaction {
 
     private long createdTime;
 
+    private BigInteger blockNumber;
+
     @Lob
     @ElementCollection
     private List<TransactionAddress> addresses;

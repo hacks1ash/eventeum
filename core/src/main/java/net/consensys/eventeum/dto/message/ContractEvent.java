@@ -11,4 +11,5 @@ public class ContractEvent extends AbstractMessage<ContractEventDetails> {
     public ContractEvent(ContractEventDetails details) {
         super(details.getId(), TYPE, details);
     }
+
 }

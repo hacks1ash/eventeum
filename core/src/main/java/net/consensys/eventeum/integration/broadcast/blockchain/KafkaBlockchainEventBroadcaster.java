@@ -3,10 +3,7 @@ package net.consensys.eventeum.integration.broadcast.blockchain;
 import net.consensys.eventeum.dto.block.BlockDetails;
 import net.consensys.eventeum.dto.event.ContractEventDetails;
 import net.consensys.eventeum.dto.event.filter.ContractEventFilter;
-import net.consensys.eventeum.dto.message.BlockEvent;
-import net.consensys.eventeum.dto.message.ContractEvent;
-import net.consensys.eventeum.dto.message.EventeumMessage;
-import net.consensys.eventeum.dto.message.TransactionEvent;
+import net.consensys.eventeum.dto.message.*;
 import net.consensys.eventeum.dto.transaction.TransactionDetails;
 import net.consensys.eventeum.integration.KafkaSettings;
 import net.consensys.eventeum.integration.consumer.SaveConsumer;
@@ -16,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.kafka.core.KafkaTemplate;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -63,8 +61,12 @@ public class KafkaBlockchainEventBroadcaster implements BlockchainEventBroadcast
     public void broadcastContractEvent(ContractEventDetails eventDetails) {
         final EventeumMessage<ContractEventDetails> message = createContractEventMessage(eventDetails);
         LOG.info("Sending contract event message: " + JSON.stringify(message));
-        if (saveConsumer.saveContractTransfer(eventDetails)) {
-            kafkaTemplate.send(kafkaSettings.getContractEventsTopic(), getContractEventCorrelationId(message), message);
+        List<WebhookMessage> webhookMessages = saveConsumer.saveContractTransfer(eventDetails);
+        if (webhookMessages != null) {
+            for (WebhookMessage webhookMessage : webhookMessages) {
+                kafkaTemplate.send(kafkaSettings.getContractEventsTopic(), getContractEventCorrelationId(message), webhookMessage);
+            }
+
         }
     }
 
@@ -72,8 +74,12 @@ public class KafkaBlockchainEventBroadcaster implements BlockchainEventBroadcast
     public void broadcastTransaction(TransactionDetails transactionDetails) {
         final EventeumMessage<TransactionDetails> message = createTransactionEventMessage(transactionDetails);
         LOG.info("Sending transaction event message: " + JSON.stringify(message));
-        saveConsumer.saveTransaction(transactionDetails);
-        kafkaTemplate.send(kafkaSettings.getTransactionEventsTopic(), transactionDetails.getBlockHash(), message);
+        List<WebhookMessage> webhookMessages = saveConsumer.saveTransaction(transactionDetails);
+        if (webhookMessages != null) {
+            for (WebhookMessage webhookMessage : webhookMessages) {
+                kafkaTemplate.send(kafkaSettings.getContractEventsTopic(), transactionDetails.getBlockHash(), webhookMessage);
+            }
+        }
     }
 
     protected EventeumMessage<BlockDetails> createBlockEventMessage(BlockDetails blockDetails) {
