@@ -53,17 +53,16 @@ public class KafkaBlockchainEventBroadcaster implements BlockchainEventBroadcast
     public void broadcastNewBlock(BlockDetails block) {
         final EventeumMessage<BlockDetails> message = createBlockEventMessage(block);
         LOG.info("Sending block message: " + JSON.stringify(message));
-
         kafkaTemplate.send(kafkaSettings.getBlockEventsTopic(), message.getId(), message);
     }
 
     @Override
     public void broadcastContractEvent(ContractEventDetails eventDetails) {
         final EventeumMessage<ContractEventDetails> message = createContractEventMessage(eventDetails);
-        LOG.info("Sending contract event message: " + JSON.stringify(message));
         List<WebhookMessage> webhookMessages = saveConsumer.saveContractTransfer(eventDetails);
         if (webhookMessages != null) {
             for (WebhookMessage webhookMessage : webhookMessages) {
+                LOG.info("Sending contract event message: " + JSON.stringify(webhookMessage));
                 kafkaTemplate.send(kafkaSettings.getContractEventsTopic(), getContractEventCorrelationId(message), webhookMessage);
             }
 
@@ -73,10 +72,10 @@ public class KafkaBlockchainEventBroadcaster implements BlockchainEventBroadcast
     @Override
     public void broadcastTransaction(TransactionDetails transactionDetails) {
         final EventeumMessage<TransactionDetails> message = createTransactionEventMessage(transactionDetails);
-        LOG.info("Sending transaction event message: " + JSON.stringify(message));
         List<WebhookMessage> webhookMessages = saveConsumer.saveTransaction(transactionDetails);
         if (webhookMessages != null) {
             for (WebhookMessage webhookMessage : webhookMessages) {
+                LOG.info("Sending transaction event message: " + JSON.stringify(webhookMessage));
                 kafkaTemplate.send(kafkaSettings.getContractEventsTopic(), transactionDetails.getBlockHash(), webhookMessage);
             }
         }

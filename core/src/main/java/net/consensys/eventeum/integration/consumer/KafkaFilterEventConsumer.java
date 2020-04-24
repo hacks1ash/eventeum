@@ -9,6 +9,7 @@ import net.consensys.eventeum.dto.transaction.TransactionDetails;
 import net.consensys.eventeum.integration.KafkaSettings;
 import net.consensys.eventeum.integration.broadcast.BroadcastException;
 import net.consensys.eventeum.integration.consumer.model.WalletNotifyBody;
+import net.consensys.eventeum.integration.consumer.model.Webhook;
 import net.consensys.eventeum.integration.eventstore.db.repository.ContractEventDetailsRepository;
 import net.consensys.eventeum.repository.TransactionMonitoringSpecRepository;
 import net.consensys.eventeum.service.SubscriptionService;
@@ -26,7 +27,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigInteger;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -85,9 +85,8 @@ public class KafkaFilterEventConsumer implements EventeumInternalEventConsumer {
         });
 
         messageConsumers.put(WebhookMessage.TYPE, (message) -> {
-            System.out.println(message);
-//            ContractEventDetails details = (ContractEventDetails) message.getDetails();
-//            sendContractEventToEndpoint(details);
+            Webhook details = (Webhook) message.getDetails();
+            sendWebhookMessage(details);
         });
     }
 
@@ -102,6 +101,32 @@ public class KafkaFilterEventConsumer implements EventeumInternalEventConsumer {
             return;
         }
         consumer.accept(message);
+    }
+
+    public void sendWebhookMessage(Webhook webhook) {
+
+        WalletNotifyBody walletNotifyBody = new WalletNotifyBody(
+                webhook.getTxid(),
+                webhook.getAddresses(),
+                webhook.getBlockHeight()
+        );
+
+        final String txEndpoint = pusherBaseUrl + "/{hostname}/node/wallet-notify/{coin}";
+
+        Map<String, String> pathParams = new HashMap<>();
+        pathParams.put("hostname", webhook.getHostname());
+        pathParams.put("coin", webhook.getCoin());
+        try {
+            retryTemplate.execute(retryContext -> {
+                final ResponseEntity<Void> response = restTemplate.postForEntity(txEndpoint,
+                        walletNotifyBody, Void.class, pathParams);
+
+                checkForSuccessResponse(response);
+                return null;
+            });
+        } catch (Exception ignored) {
+
+        }
     }
 
     public void sendBlockToEndpoint(String blockNumber) {
