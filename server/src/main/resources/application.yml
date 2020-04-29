@@ -8,15 +8,11 @@ spring:
     mongodb:
       uri: "mongodb+srv://cws:%24Y%40ml%7Cb6SYce8H%3DxTuj%24@cluster0.2ps9t.mongodb.net/test?retryWrites=true&w=majority"
 
-#      host: cluster0.2ps9t.mongodb.net
-#      username: mmaisuradze
-#      password: D8Asfx-0*|Mq,E-d"PVv
-#      database: test
 
 logging:
   level:
     org.springframework.web: ERROR
-    net.consensys: DEBUG
+    net.consensys: INFO
     net.consensys.configs: ERROR
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5p %c: %M - %m%n"
@@ -30,6 +26,7 @@ ethereum:
       blockStrategy: POLL
       syncingThreshold: 100
       healthcheckInterval: 3000
+
   healthcheck:
     pollInterval: 2000
   blockStrategy: POLL
@@ -55,6 +52,7 @@ eventStore:
   url: http://localhost:8081/api/rest/v1
   eventPath: /event
   latestBlockPath: /latestblock
+
 database:
   type: MONGO
 

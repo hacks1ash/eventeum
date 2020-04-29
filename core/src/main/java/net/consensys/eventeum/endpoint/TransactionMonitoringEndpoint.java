@@ -70,9 +70,9 @@ public class TransactionMonitoringEndpoint {
 
     private void saveContract(@RequestBody TransactionMonitoringSpec eventFilter, String walletID) {
         this.contractsRepository.findById(walletID).ifPresentOrElse(contracts -> {
-            contracts.getContractAddresses().add(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getTransactionIdentifierValue()));
+            contracts.getContractAddresses().add(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getTransactionIdentifierValue(), null));
             this.contractsRepository.save(contracts);
-        }, () -> this.contractsRepository.save(new Contracts(walletID, Set.copyOf(Collections.singletonList(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getTransactionIdentifierValue().toLowerCase()))))));
+        }, () -> this.contractsRepository.save(new Contracts(walletID, Set.copyOf(Collections.singletonList(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getTransactionIdentifierValue().toLowerCase(), null))))));
     }
 
     @Autowired

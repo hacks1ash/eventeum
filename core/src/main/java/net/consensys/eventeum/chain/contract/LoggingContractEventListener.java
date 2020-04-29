@@ -17,6 +17,6 @@ public class LoggingContractEventListener implements ContractEventListener{
 
     @Override
     public void onEvent(ContractEventDetails eventDetails) {
-        logger.info("Contract event fired: " + eventDetails.getName());
+//        logger.info("Contract event fired: " + eventDetails.getName());
     }
 }

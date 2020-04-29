@@ -48,7 +48,7 @@ public class ConfirmationCheckInitialiser implements ContractEventListener {
                 return;
             }
 
-            log.info("Registering an EventConfirmationBlockListener for event: {}", eventDetails.getId());
+//            log.info("Registering an EventConfirmationBlockListener for event: {}", eventDetails.getId());
             blockchainService.addBlockListener(createEventConfirmationBlockListener(eventDetails, node));
         }
     }

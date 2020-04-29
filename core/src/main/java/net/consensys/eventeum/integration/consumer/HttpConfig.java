@@ -13,7 +13,7 @@ public class HttpConfig {
     public RetryTemplate retryTemplate() {
 
         SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
-        retryPolicy.setMaxAttempts(10);
+        retryPolicy.setMaxAttempts(1);
 
         ExponentialBackOffPolicy exponentialBackOffPolicy = new ExponentialBackOffPolicy();
         exponentialBackOffPolicy.setMultiplier(2D);

@@ -90,7 +90,7 @@ public class Web3jService implements BlockchainService {
     @Override
     public FilterSubscription registerEventListener(
             ContractEventFilter eventFilter, ContractEventListener eventListener) {
-        log.debug("Registering event filter for event: {}", eventFilter.getId());
+//        log.debug("Registering event filter for event: {}", eventFilter.getId());
         final ContractEventSpecification eventSpec = eventFilter.getEventSpecification();
 
         final BigInteger startBlock = getStartBlockForEventFilter(eventFilter);

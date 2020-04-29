@@ -8,6 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.Lob;
+import java.util.List;
 import java.util.Set;
 
 @Document
@@ -37,6 +38,8 @@ public class Contracts {
         private String coin;
 
         private String contractAddress;
+
+        private List<String> forwarders;
 
     }
 

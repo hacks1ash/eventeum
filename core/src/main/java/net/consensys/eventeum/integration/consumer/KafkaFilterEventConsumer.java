@@ -14,6 +14,7 @@ import net.consensys.eventeum.integration.eventstore.db.repository.ContractEvent
 import net.consensys.eventeum.repository.TransactionMonitoringSpecRepository;
 import net.consensys.eventeum.service.SubscriptionService;
 import net.consensys.eventeum.service.TransactionMonitoringService;
+import net.consensys.eventeum.utils.JSON;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -118,6 +119,8 @@ public class KafkaFilterEventConsumer implements EventeumInternalEventConsumer {
         pathParams.put("coin", webhook.getCoin());
         try {
             retryTemplate.execute(retryContext -> {
+                logger.info("Sending Transaction event to -> " + pusherBaseUrl + "/{hostname}/node/wallet-notify/{coin} \n" +
+                        "With Body" + JSON.stringify(walletNotifyBody));
                 final ResponseEntity<Void> response = restTemplate.postForEntity(txEndpoint,
                         walletNotifyBody, Void.class, pathParams);
 
@@ -132,6 +135,7 @@ public class KafkaFilterEventConsumer implements EventeumInternalEventConsumer {
     public void sendBlockToEndpoint(String blockNumber) {
         try {
             retryTemplate.execute(retryContext -> {
+                logger.info("Sending Block event to -> " + pusherBaseUrl + "/cwsprod/node/block-notify/eth/" + blockNumber);
                 final String blockEndpoint = pusherBaseUrl + "/cwsprod/node/block-notify/eth/" + blockNumber;
                 ResponseEntity<Void> response = restTemplate.postForEntity(blockEndpoint, null, Void.class);
                 checkForSuccessResponse(response);

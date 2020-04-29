@@ -1,25 +1,26 @@
 package net.consensys.eventeum.endpoint;
 
+import lombok.extern.slf4j.Slf4j;
 import net.consensys.eventeum.Contracts;
 import net.consensys.eventeum.ContractsRepository;
 import net.consensys.eventeum.dto.event.filter.ContractEventFilter;
 import net.consensys.eventeum.endpoint.response.AddEventFilterResponse;
 import net.consensys.eventeum.service.SubscriptionService;
 import net.consensys.eventeum.service.exception.NotFoundException;
+import net.consensys.eventeum.utils.JSON;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletResponse;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * A REST endpoint for adding a removing event filters.
  *
  * @author Craig Williams <craig.williams@consensys.net>
  */
+@Slf4j
 @RestController
 @RequestMapping(value = "/api/rest/v1/event-filter")
 public class ContractEventFilterEndpoint {
@@ -84,6 +85,28 @@ public class ContractEventFilterEndpoint {
         }
     }
 
+    @RequestMapping(value = "/{contractAddress}/forwarder/{forwarderAddress}", method = RequestMethod.POST)
+    public void addForwarder(@PathVariable String contractAddress, @PathVariable String forwarderAddress) {
+        Optional<Contracts> byId = this.contractsRepository.findById(walletID);
+        if (byId.isPresent()) {
+            Contracts contractsFromDB = byId.get();
+            Set<Contracts.NameContracts> contracts = contractsFromDB.getContractAddresses();
+            Optional<Contracts.NameContracts> first = contracts.stream().filter(c -> c.getContractAddress().equalsIgnoreCase(contractAddress)).findFirst();
+            if (first.isPresent()) {
+                Contracts.NameContracts nameContracts = first.get();
+                List<String> forwarders = nameContracts.getForwarders();
+                if (forwarders == null) {
+                    forwarders = new ArrayList<>();
+                }
+                forwarders.add(forwarderAddress);
+                nameContracts.setForwarders(forwarders);
+                this.contractsRepository.save(contractsFromDB);
+            }
+
+        }
+    }
+
+
     @RequestMapping(value = "/erc20", method = RequestMethod.POST)
     public AddEventFilterResponse addERC20Filter(@RequestBody ContractEventFilter eventFilter,
                                                  HttpServletResponse response) {
@@ -97,11 +120,11 @@ public class ContractEventFilterEndpoint {
 
     }
 
-    private void saveContract(@RequestBody ContractEventFilter eventFilter, String walletID) {
+    private void saveContract(ContractEventFilter eventFilter, String walletID) {
         this.contractsRepository.findById(walletID).ifPresentOrElse(contracts -> {
-            contracts.getContractAddresses().add(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getContractAddress()));
+            contracts.getContractAddresses().add(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getContractAddress(), new ArrayList<>()));
             this.contractsRepository.save(contracts);
-        }, () -> this.contractsRepository.save(new Contracts(walletID, Set.copyOf(Collections.singletonList(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getContractAddress()))))));
+        }, () -> this.contractsRepository.save(new Contracts(walletID, Set.copyOf(Collections.singletonList(new Contracts.NameContracts(eventFilter.getCoin(), eventFilter.getContractAddress(), new ArrayList<>()))))));
     }
 
     @Autowired

@@ -20,12 +20,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.web3j.protocol.Web3j;
-import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.DefaultBlockParameter;
 import org.web3j.protocol.core.methods.response.EthBlock;
 import org.web3j.protocol.core.methods.response.TransactionReceipt;
-import org.web3j.protocol.http.HttpService;
-import org.web3j.tx.ReadonlyTransactionManager;
-import org.web3j.tx.gas.DefaultGasProvider;
 
 import java.math.BigInteger;
 import java.util.*;
@@ -44,8 +41,7 @@ public class SaveConsumer {
     @Value("${contracts.database.account.ID}")
     private String accountID;
 
-    @Value("${ether.node.url}")
-    private String web3URL;
+    private Web3j web3j;
 
     private ContractsRepository contractsRepository;
 
@@ -57,15 +53,12 @@ public class SaveConsumer {
     private static final String CREATE_FORWARDER = "a68a76cc";
     private static final String SEND_ETHER = "21802b59";
     private static final String WALLET_DEPLOY = WalletContract.BINARY;
+    private static final String SEND_TOKEN_SINGLE = "a9059cbb";
 
     @SneakyThrows
     public List<WebhookMessage> saveContractTransfer(ContractEventDetails details) {
-        Web3j web3j = Web3j.build(new HttpService(web3URL));
-        BigInteger latestBlock = web3j.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send().getBlock().getNumber();
-        Transaction transaction = null;
-        EthBlock.Block block = web3j.ethGetBlockByHash(details.getBlockHash(), false).send().getBlock();
-        List<TransactionAddress> transactionAddresses = new ArrayList<>();
 
+        List<TransactionAddress> transactionAddresses = new ArrayList<>();
         Contracts wallets = null;
         Contracts accounts = null;
 
@@ -73,7 +66,6 @@ public class SaveConsumer {
 
         switch (details.getName()) {
             case "Transacted": {
-
                 TransactionReceipt transactionReceipt = web3j.ethGetTransactionReceipt(details.getTransactionHash()).send().getTransactionReceipt().get();
                 org.web3j.protocol.core.methods.response.Transaction responseTx = web3j.ethGetTransactionByHash(details.getTransactionHash()).send().getTransaction().get();
                 BigInteger gasUsed = transactionReceipt.getGasUsed();
@@ -105,54 +97,76 @@ public class SaveConsumer {
 
                 BigInteger baseValue = values.stream().reduce(BigInteger.ZERO, BigInteger::add).negate();
 
-                BigInteger value = BigInteger.ZERO;
-                if (!details.getCoin().contains("eth")) {
-                    value = baseValue;
-                } else {
-                    value = baseValue.add(blockchainFee);
-                }
-
+                boolean isEth = details.getCoin().contains("eth");
 
                 Optional<Contracts> accountsById = contractsRepository.findById(accountID);
                 if (accountsById.isPresent()) {
                     accounts = accountsById.get();
                 }
+                Optional<Contracts> byId = contractsRepository.findById(walletID);
+                if (byId.isPresent()) {
+                    wallets = byId.get();
+                }
 
                 if (accounts != null) {
-                    List<String> walletAddresses = accounts.getContractAddresses().stream().map(t -> t.getContractAddress().toLowerCase()).collect(Collectors.toList());
+                    List<String> accountAddresses = accounts.getContractAddresses().stream().map(t -> t.getContractAddress().toLowerCase()).collect(Collectors.toList());
+                    Set<Contracts.NameContracts> walletContracts = wallets.getContractAddresses();
                     for (TransactionAddress transactionAddress : transactionAddresses) {
-                        if (walletAddresses.contains(transactionAddress.getAddress())) {
-                            result.add(Transaction.builder()
-                                    .txid(details.getTransactionHash())
-                                    .contractAddress(transactionAddress.getAddress().toLowerCase())
-                                    .transactionType(TransactionType.RECEIVE)
-                                    .coin(details.getCoin())
-                                    .baseValue(transactionAddress.getAmount().negate())
-                                    .value(transactionAddress.getAmount().negate())
-                                    .createdTime(block.getTimestamp().longValue())
-                                    .blockNumber(details.getBlockNumber())
-                                    .blockChainFee(BigInteger.ZERO)
-                                    .addresses(Arrays.asList(transactionAddress))
-                                    .confirmations(latestBlock.subtract(details.getBlockNumber()).longValue())
-                                    .build());
+                        if (accountAddresses.contains(transactionAddress.getAddress())) {
+                            result.add(constructTransaction(
+                                    details.getTransactionHash(),
+                                    transactionAddress.getAddress(),
+                                    TransactionType.RECEIVE,
+                                    details.getCoin(),
+                                    transactionAddress.getAmount().negate(),
+                                    transactionAddress.getAddress(),
+                                    details.getBlockNumber(),
+                                    BigInteger.ZERO,
+                                    false
+                            ));
+                        } else if (!isEth) {
+                            for (Contracts.NameContracts contract : walletContracts) {
+                                if (contract.getContractAddress().equalsIgnoreCase(transactionAddress.getAddress())) {
+                                    result.add(constructTransaction(
+                                            details.getTransactionHash(),
+                                            transactionAddress.getAddress(),
+                                            TransactionType.RECEIVE,
+                                            details.getCoin(),
+                                            transactionAddress.getAmount().negate(),
+                                            transactionAddress.getAddress(),
+                                            details.getBlockNumber(),
+                                            BigInteger.ZERO,
+                                            false
+                                    ));
+                                } else if (contract.getForwarders() != null && contract.getForwarders().contains(transactionAddress.getAddress())) {
+                                    result.add(constructTransaction(
+                                            details.getTransactionHash(),
+                                            transactionAddress.getAddress(),
+                                            TransactionType.RECEIVE,
+                                            details.getCoin(),
+                                            transactionAddress.getAmount().negate(),
+                                            transactionAddress.getAddress(),
+                                            details.getBlockNumber(),
+                                            BigInteger.ZERO,
+                                            false
+                                    ));
+                                }
+                            }
                         }
                     }
                 }
 
-
-                result.add(Transaction.builder()
-                        .txid(details.getTransactionHash())
-                        .contractAddress(details.getAddress().toLowerCase())
-                        .transactionType(TransactionType.SEND)
-                        .coin(details.getCoin())
-                        .baseValue(baseValue)
-                        .value(value)
-                        .createdTime(block.getTimestamp().longValue())
-                        .blockNumber(details.getBlockNumber())
-                        .blockChainFee(blockchainFee)
-                        .addresses(transactionAddresses)
-                        .confirmations(latestBlock.subtract(details.getBlockNumber()).longValue())
-                        .build());
+                result.add(constructTransaction(
+                        details.getTransactionHash(),
+                        details.getAddress(),
+                        TransactionType.SEND,
+                        details.getCoin(),
+                        baseValue,
+                        transactionAddresses,
+                        details.getBlockNumber(),
+                        blockchainFee,
+                        isEth
+                ));
 
                 break;
             }
@@ -161,38 +175,41 @@ public class SaveConsumer {
                 BigInteger txBaseValue = (BigInteger) details.getNonIndexedParameters().get(0).getValue();
                 String address = details.getIndexedParameters().get(0).getValueString().toLowerCase();
                 String contractAddress = details.getAddress().toLowerCase();
-                // WALLET CONTRACTS check
-                WalletContract walletContract = WalletContract.load(contractAddress, web3j, new ReadonlyTransactionManager(web3j, contractAddress), new DefaultGasProvider());
 
-                List<String> addresses = walletContract.getForwarders().send();
-                if (!addresses.contains(contractAddress) || !address.equals(contractAddress)) {
-                    address = contractAddress;
+                // WALLET CONTRACTS check
+                Optional<Contracts> byId = contractsRepository.findById(walletID);
+                if (byId.isPresent()) {
+                    wallets = byId.get();
                 }
 
-                transactionAddresses = Collections.singletonList(new TransactionAddress(
-                        address,
-                        (BigInteger) details.getNonIndexedParameters().get(0).getValue()
-                ));
+                Optional<Contracts.NameContracts> first = wallets.getContractAddresses().stream().filter(c -> c.getContractAddress().equals(contractAddress)).findFirst();
 
-                result.add(Transaction.builder()
-                        .txid(details.getTransactionHash())
-                        .contractAddress(contractAddress)
-                        .transactionType(TransactionType.RECEIVE)
-                        .coin(details.getCoin())
-                        .baseValue(txBaseValue)
-                        .value(txBaseValue)
-                        .createdTime(block.getTimestamp().longValue())
-                        .blockChainFee(BigInteger.ZERO)
-                        .addresses(transactionAddresses)
-                        .blockNumber(details.getBlockNumber())
-                        .confirmations(latestBlock.subtract(details.getBlockNumber()).longValue())
-                        .build());
+                if (first.isPresent()) {
+                    List<String> addresses = first.get().getForwarders();
+                    if (!addresses.contains(contractAddress) || !address.equals(contractAddress)) {
+                        address = contractAddress;
+                    }
+
+                    result.add(constructTransaction(
+                            details.getTransactionHash(),
+                            contractAddress,
+                            TransactionType.RECEIVE,
+                            details.getCoin(),
+                            txBaseValue,
+                            address,
+                            details.getBlockNumber(),
+                            BigInteger.ZERO,
+                            false
+                    ));
+                }
 
                 break;
             }
             case "Transfer": {
                 Contracts contracts = contractsRepository.findById(tokenID).get();
-                contracts.getContractAddresses().stream().findFirst().ifPresent(n -> details.setCoin(n.getCoin()));
+                Set<Contracts.NameContracts> tokenContractAddresses = contracts.getContractAddresses();
+                Contracts.NameContracts nameContracts = tokenContractAddresses.stream().filter(c -> c.getContractAddress().equalsIgnoreCase(details.getAddress())).findFirst().get();
+                details.setCoin(nameContracts.getCoin());
 
                 String fromAddress = ((String) details.getIndexedParameters().get(0).getValue()).toLowerCase();
                 String toAddress = ((String) details.getIndexedParameters().get(1).getValue()).toLowerCase();
@@ -223,33 +240,52 @@ public class SaveConsumer {
                 }
 
                 // WALLET CONTRACTS check
-                if (wallets != null && details.getWalletContractAddress() == null) {
+                if (wallets != null) {
 
-                    List<String> contractAddresses = wallets.getContractAddresses().stream().map(Contracts.NameContracts::getContractAddress).collect(Collectors.toList());
-
+                    Set<Contracts.NameContracts> contractsSub = wallets.getContractAddresses();
+                    List<String> contractAddresses = contractsSub.stream().map(Contracts.NameContracts::getContractAddress).collect(Collectors.toList());
+                    boolean checkForwarder = true;
                     if (contractAddresses.contains(fromAddress)) {
                         return null;
                     } else if (contractAddresses.contains(toAddress)) {
-                        details.setWalletContractAddress(toAddress);
-                        transactionType = TransactionType.RECEIVE;
+                        result.add(constructTransaction(
+                                details.getTransactionHash(),
+                                toAddress,
+                                TransactionType.RECEIVE,
+                                details.getCoin(),
+                                baseValue,
+                                toAddress,
+                                details.getBlockNumber(),
+                                BigInteger.ZERO,
+                                false
+                        ));
+                        checkForwarder = false;
                     }
 
-                    if (details.getWalletContractAddress() == null) {
+                    if (checkForwarder) {
 
-                        for (String wallet : contractAddresses) {
-
-                            WalletContract walletContract = WalletContract.load(wallet, web3j, new ReadonlyTransactionManager(web3j, wallet), new DefaultGasProvider());
-
+                        for (Contracts.NameContracts wallet : contractsSub) {
                             try {
-                                List<String> addresses = walletContract.getForwarders().send();
-                                if (addresses.contains(fromAddress)) {
-                                    return null;
-                                } else if (addresses.contains(toAddress)) {
-                                    details.setWalletContractAddress(wallet);
-                                    transactionAddresses.add(new TransactionAddress(toAddress, baseValue));
-                                    transactionType = TransactionType.RECEIVE;
-                                    break;
+                                if (wallet.getForwarders() != null) {
+                                    List<String> addresses = wallet.getForwarders();
+                                    if (addresses.contains(fromAddress)) {
+                                        return null;
+                                    } else if (addresses.contains(toAddress)) {
+                                        result.add(constructTransaction(
+                                                details.getTransactionHash(),
+                                                wallet.getContractAddress(),
+                                                TransactionType.RECEIVE,
+                                                details.getCoin(),
+                                                baseValue,
+                                                toAddress,
+                                                details.getBlockNumber(),
+                                                BigInteger.ZERO,
+                                                false
+                                        ));
+                                        break;
+                                    }
                                 }
+
                             } catch (Exception ignored) {
                             }
 
@@ -260,159 +296,112 @@ public class SaveConsumer {
                 }
 
                 // ACCOUNT CHECKS
-                if (details.getWalletContractAddress() == null) {
+                if (accounts != null) {
+                    List<String> accountAddresses = accounts.getContractAddresses().stream().map(t -> t.getContractAddress().toLowerCase()).collect(Collectors.toList());
 
-                    if (accounts != null) {
-                        List<String> accountAddresses = accounts.getContractAddresses().stream().map(t -> t.getContractAddress().toLowerCase()).collect(Collectors.toList());
+                    if (accountAddresses.contains(fromAddress)) {
 
-                        if (accountAddresses.contains(fromAddress)) {
+                        // Account to Account
+                        if (accountAddresses.contains(toAddress)) {
+                            result.add(constructTransaction(
+                                    details.getTransactionHash(),
+                                    toAddress,
+                                    TransactionType.RECEIVE,
+                                    details.getCoin(),
+                                    baseValue,
+                                    toAddress,
+                                    details.getBlockNumber(),
+                                    BigInteger.ZERO,
+                                    false
+                            ));
+                        }
 
-                            // Account to Account
-                            if (accountAddresses.contains(toAddress)) {
+                        Set<Contracts.NameContracts> contractSub = null;
+                        List<String> contractAddresses = null;
+                        if (wallets != null) {
+                            contractSub = wallets.getContractAddresses();
+                            contractAddresses = wallets.getContractAddresses().stream().map(Contracts.NameContracts::getContractAddress).collect(Collectors.toList());
+                        }
+
+                        // Account to Contract
+                        if (contractAddresses != null && transactionType == null) {
+                            if (contractAddresses.contains(toAddress)) {
                                 details.setWalletContractAddress(toAddress);
-                                transactionType = TransactionType.RECEIVE;
-                                result.add(Transaction.builder()
-                                        .txid(details.getTransactionHash())
-                                        .contractAddress(details.getWalletContractAddress())
-                                        .transactionType(transactionType)
-                                        .coin(details.getCoin())
-                                        .baseValue(baseValue)
-                                        .value(baseValue.add(blockchainFee))
-                                        .createdTime(block.getTimestamp().longValue())
-                                        .blockChainFee(blockchainFee)
-                                        .addresses(transactionAddresses)
-                                        .blockNumber(details.getBlockNumber())
-                                        .confirmations(latestBlock.subtract(details.getBlockNumber()).longValue())
-                                        .build());
+
+                                result.add(constructTransaction(
+                                        details.getTransactionHash(),
+                                        toAddress,
+                                        TransactionType.RECEIVE,
+                                        details.getCoin(),
+                                        baseValue,
+                                        toAddress,
+                                        details.getBlockNumber(),
+                                        BigInteger.ZERO,
+                                        false
+                                ));
                             }
 
-                            List<String> contractAddresses = null;
-                            if (wallets != null) {
-                                contractAddresses = wallets.getContractAddresses().stream().map(Contracts.NameContracts::getContractAddress).collect(Collectors.toList());
-                            }
+                        }
 
-                            // Account to Contract
-                            if (contractAddresses != null && transactionType == null) {
-                                if (contractAddresses.contains(toAddress)) {
-                                    details.setWalletContractAddress(toAddress);
-                                    transactionType = TransactionType.RECEIVE;
-                                    result.add(Transaction.builder()
-                                            .txid(details.getTransactionHash())
-                                            .contractAddress(details.getWalletContractAddress())
-                                            .transactionType(transactionType)
-                                            .coin(details.getCoin())
-                                            .baseValue(baseValue)
-                                            .value(baseValue.add(blockchainFee))
-                                            .createdTime(block.getTimestamp().longValue())
-                                            .blockChainFee(blockchainFee)
-                                            .addresses(transactionAddresses)
-                                            .blockNumber(details.getBlockNumber())
-                                            .confirmations(latestBlock.subtract(details.getBlockNumber()).longValue())
-                                            .build());
-                                }
-
-                            }
-
-                            // Account to Forwarder
-                            if (contractAddresses != null && transactionType == null) {
-                                for (String wallet : contractAddresses) {
-                                    WalletContract walletContract = WalletContract.load(wallet, web3j, new ReadonlyTransactionManager(web3j, wallet), new DefaultGasProvider());
-                                    try {
-                                        List<String> addresses = walletContract.getForwarders().send();
-                                        if (addresses.contains(toAddress)) {
-                                            details.setWalletContractAddress(toAddress);
-                                            transactionType = TransactionType.RECEIVE;
-                                            result.add(Transaction.builder()
-                                                    .txid(details.getTransactionHash())
-                                                    .contractAddress(details.getWalletContractAddress())
-                                                    .transactionType(transactionType)
-                                                    .coin(details.getCoin())
-                                                    .baseValue(baseValue)
-                                                    .value(baseValue.add(blockchainFee))
-                                                    .createdTime(block.getTimestamp().longValue())
-                                                    .blockChainFee(blockchainFee)
-                                                    .addresses(transactionAddresses)
-                                                    .blockNumber(details.getBlockNumber())
-                                                    .confirmations(latestBlock.subtract(details.getBlockNumber()).longValue())
-                                                    .build());
-                                            break;
-                                        }
-                                    } catch (Exception ignored) {
+                        // Account to Forwarder
+                        if (contractAddresses != null && contractSub != null && transactionType == null) {
+                            for (Contracts.NameContracts wallet : contractSub) {
+                                try {
+                                    List<String> addresses = wallet.getForwarders();
+                                    if (addresses.contains(toAddress)) {
+                                        result.add(constructTransaction(
+                                                details.getTransactionHash(),
+                                                toAddress,
+                                                TransactionType.RECEIVE,
+                                                details.getCoin(),
+                                                baseValue,
+                                                toAddress,
+                                                details.getBlockNumber(),
+                                                BigInteger.ZERO,
+                                                false
+                                        ));
+                                        break;
                                     }
+                                } catch (Exception ignored) {
                                 }
                             }
-
-                            details.setWalletContractAddress(fromAddress);
-                            transactionType = TransactionType.SEND;
-                            TransactionReceipt transactionReceipt = web3j.ethGetTransactionReceipt(details.getTransactionHash()).send().getTransactionReceipt().get();
-                            org.web3j.protocol.core.methods.response.Transaction responseTx = web3j.ethGetTransactionByHash(details.getTransactionHash()).send().getTransaction().get();
-                            BigInteger gasUsed = transactionReceipt.getGasUsed();
-                            BigInteger gasPrice = responseTx.getGasPrice();
-                            baseValue = baseValue.negate();
-                            blockchainFee = gasPrice.multiply(gasUsed).negate();
-                            result.add(Transaction.builder()
-                                    .txid(details.getTransactionHash())
-                                    .contractAddress(details.getWalletContractAddress())
-                                    .transactionType(transactionType)
-                                    .coin(details.getCoin())
-                                    .baseValue(baseValue)
-                                    .value(baseValue.add(blockchainFee))
-                                    .createdTime(block.getTimestamp().longValue())
-                                    .blockChainFee(blockchainFee)
-                                    .addresses(transactionAddresses)
-                                    .blockNumber(details.getBlockNumber())
-                                    .confirmations(latestBlock.subtract(details.getBlockNumber()).longValue())
-                                    .build());
-
-                        } else if (accountAddresses.contains(toAddress)) {
-                            details.setWalletContractAddress(toAddress);
-                            transactionType = TransactionType.RECEIVE;
-                            result.add(Transaction.builder()
-                                    .txid(details.getTransactionHash())
-                                    .contractAddress(details.getWalletContractAddress())
-                                    .transactionType(transactionType)
-                                    .coin(details.getCoin())
-                                    .baseValue(baseValue)
-                                    .value(baseValue.add(blockchainFee))
-                                    .createdTime(block.getTimestamp().longValue())
-                                    .blockChainFee(blockchainFee)
-                                    .addresses(transactionAddresses)
-                                    .blockNumber(details.getBlockNumber())
-                                    .confirmations(latestBlock.subtract(details.getBlockNumber()).longValue())
-                                    .build());
                         }
 
+                        TransactionReceipt transactionReceipt = web3j.ethGetTransactionReceipt(details.getTransactionHash()).send().getTransactionReceipt().get();
+                        org.web3j.protocol.core.methods.response.Transaction responseTx = web3j.ethGetTransactionByHash(details.getTransactionHash()).send().getTransaction().get();
+                        BigInteger gasUsed = transactionReceipt.getGasUsed();
+                        BigInteger gasPrice = responseTx.getGasPrice();
+                        blockchainFee = gasPrice.multiply(gasUsed).negate();
+
+                        result.add(constructTransaction(
+                                details.getTransactionHash(),
+                                fromAddress,
+                                TransactionType.SEND,
+                                details.getCoin(),
+                                baseValue.negate(),
+                                toAddress,
+                                details.getBlockNumber(),
+                                blockchainFee,
+                                false
+                        ));
+
+                    } else if (accountAddresses.contains(toAddress)) {
+                        details.setWalletContractAddress(toAddress);
+
+                        result.add(constructTransaction(
+                                details.getTransactionHash(),
+                                toAddress,
+                                TransactionType.RECEIVE,
+                                details.getCoin(),
+                                baseValue,
+                                toAddress,
+                                details.getBlockNumber(),
+                                blockchainFee,
+                                false
+                        ));
                     }
                 }
 
-
-                if (result.isEmpty() && details.getWalletContractAddress() != null && transactionType != null) {
-
-                    if (transactionAddresses.isEmpty()) {
-                        transactionAddresses.add(new TransactionAddress(details.getWalletContractAddress(), baseValue));
-                    }
-
-                    if (transactionType == TransactionType.SEND) {
-                        if (baseValue.compareTo(BigInteger.ZERO) > 0) {
-                            baseValue = baseValue.negate();
-                        }
-                    }
-
-                    result.add(Transaction.builder()
-                            .txid(details.getTransactionHash())
-                            .contractAddress(details.getWalletContractAddress())
-                            .transactionType(transactionType)
-                            .coin(details.getCoin())
-                            .baseValue(baseValue)
-                            .value(baseValue.add(blockchainFee))
-                            .createdTime(block.getTimestamp().longValue())
-                            .blockChainFee(blockchainFee)
-                            .addresses(transactionAddresses)
-                            .blockNumber(details.getBlockNumber())
-                            .confirmations(latestBlock.subtract(details.getBlockNumber()).longValue())
-                            .build());
-
-                }
                 break;
             }
         }
@@ -425,9 +414,6 @@ public class SaveConsumer {
 
     @SneakyThrows
     public List<WebhookMessage> saveTransaction(TransactionDetails details) {
-
-        Web3j web3j = Web3j.build(new HttpService(web3URL));
-        BigInteger latestBlock = web3j.ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false).send().getBlock().getNumber();
         EthBlock.Block block = web3j.ethGetBlockByHash(details.getBlockHash(), false).send().getBlock();
         TransactionType transactionType = null;
         BigInteger baseValue = BigInteger.ZERO;
@@ -456,26 +442,17 @@ public class SaveConsumer {
             baseValue = baseValue.add(new BigInteger(details.getValue().substring(2), 16));
 
             if (accountAddresses.contains(to)) {
-                details.setContractAddress(to);
-                transactionAddresses.add(new TransactionAddress(to, baseValue));
-                transactionType = TransactionType.RECEIVE;
-
-                result.add(
-                        Transaction.builder()
-                                .txid(details.getHash())
-                                .contractAddress(details.getContractAddress().toLowerCase())
-                                .createdTime(block.getTimestamp().longValue())
-                                .transactionType(transactionType)
-                                .baseValue(baseValue)
-                                .blockChainFee(blockchainFee)
-                                .value(baseValue.add(blockchainFee))
-                                .confirmations(latestBlock.subtract(block.getNumber()).longValue())
-                                .blockNumber(block.getNumber())
-                                .coin(details.getCoin())
-                                .addresses(transactionAddresses).build()
-                );
-
-                transactionAddresses = new ArrayList<>();
+                result.add(constructTransaction(
+                        details.getHash(),
+                        to,
+                        TransactionType.RECEIVE,
+                        details.getCoin(),
+                        baseValue,
+                        to,
+                        block.getNumber(),
+                        blockchainFee,
+                        false
+                ));
             }
 
             if (accountAddresses.contains(from)) {
@@ -485,6 +462,11 @@ public class SaveConsumer {
 
                 if (details.getInput().length() > 2) {
                     String dataWithoutPrefix = details.getInput().substring(2);
+
+                    if (dataWithoutPrefix.startsWith(SEND_TOKEN_SINGLE)) {
+                        return null;
+                    }
+
                     if (dataWithoutPrefix.startsWith(SEND_ETHER) || dataWithoutPrefix.startsWith(SEND_TOKEN)) {
                         transactionType = TransactionType.SEND;
                         transactionAddresses.add(new TransactionAddress(to, baseValue));
@@ -503,20 +485,18 @@ public class SaveConsumer {
                     transactionAddresses.add(new TransactionAddress(to, baseValue));
                 }
 
-                result.add(
-                        Transaction.builder()
-                                .txid(details.getHash())
-                                .contractAddress(details.getContractAddress().toLowerCase())
-                                .createdTime(block.getTimestamp().longValue())
-                                .transactionType(transactionType)
-                                .baseValue(baseValue)
-                                .blockChainFee(blockchainFee)
-                                .value(baseValue.add(blockchainFee))
-                                .confirmations(latestBlock.subtract(block.getNumber()).longValue())
-                                .blockNumber(block.getNumber())
-                                .coin(details.getCoin())
-                                .addresses(transactionAddresses).build()
-                );
+
+                result.add(constructTransaction(
+                        details.getHash(),
+                        details.getContractAddress(),
+                        transactionType,
+                        details.getCoin(),
+                        baseValue,
+                        transactionAddresses,
+                        block.getNumber(),
+                        blockchainFee,
+                        true
+                ));
             }
 
         }
@@ -528,6 +508,10 @@ public class SaveConsumer {
         return null;
     }
 
+    @SneakyThrows
+    private long getBlockTimeStamp(BigInteger blockNumber) {
+        return web3j.ethGetBlockByNumber(DefaultBlockParameter.valueOf(blockNumber), false).send().getBlock().getTimestamp().longValue();
+    }
 
     private void updateBlockForContracts(ContractEventDetails details) {
         log.warn(details.getCoin());
@@ -587,7 +571,9 @@ public class SaveConsumer {
     private List<WebhookMessage> transaformTransactionsToWebhook(List<Transaction> transactions, ContractEventDetails details) {
         List<WebhookMessage> result = new ArrayList<>();
         for (Transaction transaction : transactions) {
-            result.add(new WebhookMessage(new Webhook(details.getHostname(), details.getCoin(), transaction.getContractAddress(), transaction.getAddresses().stream().map(TransactionAddress::getAddress).collect(Collectors.toList()), transaction.getBlockNumber())));
+            if (transaction.getTransactionType() == TransactionType.SEND || transaction.getTransactionType() == TransactionType.RECEIVE) {
+                result.add(new WebhookMessage(new Webhook(details.getHostname(), details.getCoin(), transaction.getTxid(), transaction.getAddresses().stream().map(TransactionAddress::getAddress).collect(Collectors.toList()), transaction.getBlockNumber())));
+            }
         }
         return result;
     }
@@ -595,9 +581,57 @@ public class SaveConsumer {
     private List<WebhookMessage> transaformTransactionsToWebhook(List<Transaction> transactions, TransactionDetails details) {
         List<WebhookMessage> result = new ArrayList<>();
         for (Transaction transaction : transactions) {
-            result.add(new WebhookMessage(new Webhook(details.getHostname(), details.getCoin(), transaction.getContractAddress(), transaction.getAddresses().stream().map(TransactionAddress::getAddress).collect(Collectors.toList()), transaction.getBlockNumber())));
+            if (transaction.getTransactionType() == TransactionType.SEND || transaction.getTransactionType() == TransactionType.RECEIVE) {
+                result.add(new WebhookMessage(new Webhook(details.getHostname(), details.getCoin(), transaction.getTxid(), transaction.getAddresses().stream().map(TransactionAddress::getAddress).collect(Collectors.toList()), transaction.getBlockNumber())));
+            }
         }
         return result;
+    }
+
+    private Transaction constructTransaction(String txid,
+                                             String contractAddress,
+                                             TransactionType transactionType,
+                                             String coin,
+                                             BigInteger amount,
+                                             String address,
+                                             BigInteger blockNumber,
+                                             BigInteger blockchainFee,
+                                             boolean sumBlockchainFee) {
+        return Transaction.builder()
+                .txid(txid)
+                .contractAddress(contractAddress.toLowerCase())
+                .transactionType(transactionType)
+                .coin(coin)
+                .value(sumBlockchainFee ? amount.add(blockchainFee) : amount)
+                .baseValue(amount)
+                .createdTime(getBlockTimeStamp(blockNumber))
+                .blockNumber(blockNumber)
+                .blockChainFee(blockchainFee)
+                .addresses(Arrays.asList(new TransactionAddress(address.toLowerCase(), amount)))
+                .build();
+    }
+
+    private Transaction constructTransaction(String txid,
+                                             String contractAddress,
+                                             TransactionType transactionType,
+                                             String coin,
+                                             BigInteger amount,
+                                             List<TransactionAddress> transactionAddresses,
+                                             BigInteger blockNumber,
+                                             BigInteger blockchainFee,
+                                             boolean sumBlockchainFee) {
+        return Transaction.builder()
+                .txid(txid)
+                .contractAddress(contractAddress.toLowerCase())
+                .transactionType(transactionType)
+                .coin(coin)
+                .value(sumBlockchainFee ? amount.add(blockchainFee) : amount)
+                .baseValue(amount)
+                .createdTime(getBlockTimeStamp(blockNumber))
+                .blockNumber(blockNumber)
+                .blockChainFee(blockchainFee)
+                .addresses(transactionAddresses)
+                .build();
     }
 
     @Autowired
@@ -613,6 +647,11 @@ public class SaveConsumer {
     @Autowired
     public void setTransactionRepository(TransactionRepository transactionRepository) {
         this.transactionRepository = transactionRepository;
+    }
+
+    @Autowired
+    public void setWeb3j(Web3j web3j) {
+        this.web3j = web3j;
     }
 
 
