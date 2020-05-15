@@ -22,14 +22,13 @@ logging:
 ethereum:
   nodes:
     - name: default
-      url: http://172.31.41.187:8545
-      blockStrategy: POLL
+      url: ws://172.31.41.187:8546
+      blockStrategy: PUBSUB
       syncingThreshold: 100
       healthcheckInterval: 3000
-
   healthcheck:
     pollInterval: 2000
-  blockStrategy: POLL
+  blockStrategy: PUBSUB
 
 ether:
   node:
@@ -100,3 +99,7 @@ management:
     export:
       prometheus:
         enabled: false
+
+
+cws:
+  hostname: cwsprod

@@ -21,6 +21,6 @@ public class EventStoreContractEventUpdater implements ContractEventListener {
     }
     @Override
     public void onEvent(ContractEventDetails eventDetails) {
-//        saveableEventStore.save(eventDetails);
+        saveableEventStore.save(eventDetails);
     }
 }

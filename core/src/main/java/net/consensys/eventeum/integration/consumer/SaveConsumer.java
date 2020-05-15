@@ -41,6 +41,9 @@ public class SaveConsumer {
     @Value("${contracts.database.account.ID}")
     private String accountID;
 
+    @Value("${cws.hostname:cwsprod}")
+    private String hostname;
+
     private Web3j web3j;
 
     private ContractsRepository contractsRepository;
@@ -572,7 +575,7 @@ public class SaveConsumer {
         List<WebhookMessage> result = new ArrayList<>();
         for (Transaction transaction : transactions) {
             if (transaction.getTransactionType() == TransactionType.SEND || transaction.getTransactionType() == TransactionType.RECEIVE) {
-                result.add(new WebhookMessage(new Webhook(details.getHostname(), details.getCoin(), transaction.getTxid(), transaction.getAddresses().stream().map(TransactionAddress::getAddress).collect(Collectors.toList()), transaction.getBlockNumber())));
+                result.add(new WebhookMessage(new Webhook(hostname, details.getCoin(), transaction.getTxid(), transaction.getAddresses().stream().map(TransactionAddress::getAddress).collect(Collectors.toList()), transaction.getBlockNumber())));
             }
         }
         return result;
@@ -582,7 +585,7 @@ public class SaveConsumer {
         List<WebhookMessage> result = new ArrayList<>();
         for (Transaction transaction : transactions) {
             if (transaction.getTransactionType() == TransactionType.SEND || transaction.getTransactionType() == TransactionType.RECEIVE) {
-                result.add(new WebhookMessage(new Webhook(details.getHostname(), details.getCoin(), transaction.getTxid(), transaction.getAddresses().stream().map(TransactionAddress::getAddress).collect(Collectors.toList()), transaction.getBlockNumber())));
+                result.add(new WebhookMessage(new Webhook(hostname, details.getCoin(), transaction.getTxid(), transaction.getAddresses().stream().map(TransactionAddress::getAddress).collect(Collectors.toList()), transaction.getBlockNumber())));
             }
         }
         return result;
