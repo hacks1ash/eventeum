@@ -1,3 +1,17 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package net.consensys.eventeumserver.integrationtest;
 
 import com.mongodb.MongoClient;
@@ -98,7 +112,7 @@ public abstract class ServiceRestartRecoveryTests extends BaseKafkaIntegrationTe
         System.out.println("BROADCAST BLOCKS AFTER: " + JSON.stringify(getBroadcastBlockMessages()));
 
         //Eventeum will rebroadcast the last seen block after restart in case block
-        //wasn't fully processed
+        //wasn't fully processed (when numBlocksToReplay=0)
         assertEquals(lastBlockNumber, getBroadcastBlockMessages().get(0).getNumber());
 
         //Assert incremental blocks
