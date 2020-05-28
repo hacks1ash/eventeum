@@ -41,8 +41,6 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.math.BigInteger;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -64,8 +62,11 @@ public class KafkaFilterEventConsumer implements EventeumInternalEventConsumer {
     @Value("${pusher.url}")
     private String pusherBaseUrl;
 
-    @Value("${cws.hostname:cwsprod}")
+    @Value("${cws.hostname}")
     private String hostname;
+
+    @Value("${cws.coin}")
+    private String coin;
 
     private RestTemplate restTemplate;
 
@@ -92,14 +93,14 @@ public class KafkaFilterEventConsumer implements EventeumInternalEventConsumer {
 
         messageConsumers.put(TransactionEvent.TYPE, (message) -> {
             TransactionDetails details = (TransactionDetails) message.getDetails();
-            sendTxToEndpoint(details.getHash(), details.getContractAddress(),
-                    new BigInteger(details.getBlockNumber().substring(2), 16), "cwsprod", "eth");
+//            sendTxToEndpoint(details.getHash(), details.getContractAddress(),
+//                    new BigInteger(details.getBlockNumber().substring(2), 16), hostname, coin);
 
         });
 
         messageConsumers.put(ContractEvent.TYPE, (message) -> {
             ContractEventDetails details = (ContractEventDetails) message.getDetails();
-            sendContractEventToEndpoint(details);
+//            sendContractEventToEndpoint(details);
         });
 
         messageConsumers.put(WebhookMessage.TYPE, (message) -> {
@@ -129,7 +130,7 @@ public class KafkaFilterEventConsumer implements EventeumInternalEventConsumer {
                 webhook.getBlockHeight()
         );
 
-        final String txEndpoint = pusherBaseUrl + "/" + hostname +"/node/wallet-notify/" + webhook.getCoin();
+        final String txEndpoint = pusherBaseUrl + "/" + hostname + "/node/wallet-notify/" + webhook.getCoin();
 
         try {
             retryTemplate.execute(retryContext -> {
@@ -149,73 +150,14 @@ public class KafkaFilterEventConsumer implements EventeumInternalEventConsumer {
     public void sendBlockToEndpoint(String blockNumber) {
         try {
             retryTemplate.execute(retryContext -> {
-                logger.info("Sending Block event to -> " + pusherBaseUrl + "/cwsprod/node/block-notify/eth/" + blockNumber);
-                final String blockEndpoint = pusherBaseUrl + "/cwsprod/node/block-notify/eth/" + blockNumber;
+                logger.info("Sending Block event to -> " + pusherBaseUrl + "/" + hostname + "/node/block-notify/" + coin + "/" + blockNumber);
+                final String blockEndpoint = pusherBaseUrl + "/" + hostname + "/node/block-notify/" + coin + "/" + blockNumber;
                 ResponseEntity<Void> response = restTemplate.postForEntity(blockEndpoint, null, Void.class);
                 checkForSuccessResponse(response);
                 return null;
             });
         } catch (Exception ignored) {
             ignored.printStackTrace();
-        }
-
-    }
-
-    public void sendTxToEndpoint(String txHash, String address, BigInteger blockNumber, String hostname, String coin) {
-        WalletNotifyBody walletNotifyBody = new WalletNotifyBody(
-                txHash,
-                Collections.singletonList(address.toLowerCase()),
-                blockNumber
-        );
-
-        final String txEndpoint = pusherBaseUrl + "/" + hostname +"/node/wallet-notify/" + coin;
-
-        Map<String, String> pathParams = new HashMap<>();
-        pathParams.put("hostname", hostname);
-        pathParams.put("coin", coin);
-        try {
-            retryTemplate.execute(retryContext -> {
-                final ResponseEntity<Void> response = restTemplate.postForEntity(txEndpoint,
-                        walletNotifyBody, Void.class, pathParams);
-
-                checkForSuccessResponse(response);
-                return null;
-            });
-        } catch (Exception ignored) {
-
-        }
-
-    }
-
-    public void sendContractEventToEndpoint(ContractEventDetails details) {
-
-        WalletNotifyBody walletNotifyBody;
-
-        final String txEndpoint = pusherBaseUrl + "/{hostname}/node/wallet-notify/{coin}";
-
-        Map<String, String> pathParams = new HashMap<>();
-        pathParams.put("hostname", details.getHostname());
-        pathParams.put("coin", details.getCoin());
-
-        if (details.getWalletContractAddress() == null) {
-            walletNotifyBody = new WalletNotifyBody(details.getTransactionHash(),
-                    Collections.singletonList(details.getAddress().toLowerCase()),
-                    details.getBlockNumber());
-        } else {
-            walletNotifyBody = new WalletNotifyBody(details.getTransactionHash(),
-                    Collections.singletonList(details.getWalletContractAddress().toLowerCase()),
-                    details.getBlockNumber());
-        }
-        try {
-            retryTemplate.execute(retryContext -> {
-                final ResponseEntity<Void> response = restTemplate.postForEntity(txEndpoint,
-                        walletNotifyBody, Void.class, pathParams);
-
-                checkForSuccessResponse(response);
-                return null;
-            });
-        } catch (Exception ignored) {
-
         }
 
     }

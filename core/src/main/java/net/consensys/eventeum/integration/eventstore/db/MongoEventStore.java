@@ -97,7 +97,7 @@ public class MongoEventStore implements SaveableEventStore {
 
     @Override
     public void save(ContractEventDetails contractEventDetails) {
-        eventDetailsRepository.save(contractEventDetails);
+//        eventDetailsRepository.save(contractEventDetails);
     }
 
     @Override

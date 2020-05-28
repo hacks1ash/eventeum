@@ -41,7 +41,7 @@ public class SaveConsumer {
     @Value("${contracts.database.account.ID}")
     private String accountID;
 
-    @Value("${cws.hostname:cwsprod}")
+    @Value("${cws.hostname")
     private String hostname;
 
     private Web3j web3j;
@@ -575,7 +575,8 @@ public class SaveConsumer {
         List<WebhookMessage> result = new ArrayList<>();
         for (Transaction transaction : transactions) {
             if (transaction.getTransactionType() == TransactionType.SEND || transaction.getTransactionType() == TransactionType.RECEIVE) {
-                result.add(new WebhookMessage(new Webhook(hostname, details.getCoin(), transaction.getTxid(), transaction.getAddresses().stream().map(TransactionAddress::getAddress).collect(Collectors.toList()), transaction.getBlockNumber())));
+                List<String> addresses = Arrays.asList(transaction.getContractAddress());
+                result.add(new WebhookMessage(new Webhook(hostname, transaction.getCoin(), transaction.getTxid(), addresses, transaction.getBlockNumber())));
             }
         }
         return result;
@@ -585,7 +586,8 @@ public class SaveConsumer {
         List<WebhookMessage> result = new ArrayList<>();
         for (Transaction transaction : transactions) {
             if (transaction.getTransactionType() == TransactionType.SEND || transaction.getTransactionType() == TransactionType.RECEIVE) {
-                result.add(new WebhookMessage(new Webhook(hostname, details.getCoin(), transaction.getTxid(), transaction.getAddresses().stream().map(TransactionAddress::getAddress).collect(Collectors.toList()), transaction.getBlockNumber())));
+                List<String> addresses = Arrays.asList(transaction.getContractAddress());
+                result.add(new WebhookMessage(new Webhook(hostname, transaction.getCoin(), transaction.getTxid(), addresses, transaction.getBlockNumber())));
             }
         }
         return result;
@@ -656,6 +658,5 @@ public class SaveConsumer {
     public void setWeb3j(Web3j web3j) {
         this.web3j = web3j;
     }
-
 
 }

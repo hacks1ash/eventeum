@@ -103,3 +103,4 @@ management:
 
 cws:
   hostname: cwsprod
+  coin: eth
